@@ -6,13 +6,16 @@ import GraficoTipoPA from '../components/dashboard/GraficoTipoPA';
 import { BarChart2, DollarSign, FileText, CheckCircle, Clock, Calendar } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import useTrabajoStore from '../store/trabajosStore';
+import useCatalogoStore from '../store/catalogoStore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const DashboardPage: React.FC = () => {
   const { trabajos, fetchTrabajos } = useTrabajoStore();
+  const { periodos, fetchPeriodos } = useCatalogoStore();
   const [proveedorFiltro, setProveedorFiltro] = useState<string>('Todos');
   const [tipoPAFiltro, setTipoPAFiltro] = useState<string>('Todos');
+  const [periodoFiltro, setPeriodoFiltro] = useState<string>('Todos');
   const meses = [
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
@@ -21,23 +24,26 @@ const DashboardPage: React.FC = () => {
   const anios = Array.from(new Set(trabajos.map(t => new Date(t.fechaRegistro).getFullYear())));
   if (!anios.includes(anioActual)) anios.push(anioActual);
   anios.sort((a, b) => b - a);
-  const [mesFiltro, setMesFiltro] = useState<number>(new Date().getMonth());
+  const [mesFiltro, setMesFiltro] = useState<string>('Todos');
   const [anioFiltro, setAnioFiltro] = useState<number>(anioActual);
 
   useEffect(() => {
     fetchTrabajos();
-  }, [fetchTrabajos]);
+    fetchPeriodos();
+  }, [fetchTrabajos, fetchPeriodos]);
 
   const proveedores = ['Todos', ...Array.from(new Set(trabajos.map(t => t.proveedor).filter(Boolean)))];
   const tiposPA = ['Todos', ...Array.from(new Set(trabajos.map(t => t.tipoPA).filter(Boolean)))];
+  const periodosFiltro = ['Todos', ...periodos.map(p => p.nombre).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))];
 
   const trabajosFiltrados = trabajos.filter(trabajo => {
     const proveedorOk = proveedorFiltro === 'Todos' || trabajo.proveedor === proveedorFiltro;
     const tipoPAOk = tipoPAFiltro === 'Todos' || trabajo.tipoPA === tipoPAFiltro;
     const fecha = new Date(trabajo.fechaRegistro);
-    const mesOk = fecha.getMonth() === mesFiltro;
+    const mesOk = mesFiltro === 'Todos' || fecha.getMonth().toString() === mesFiltro;
     const anioOk = fecha.getFullYear() === anioFiltro;
-    return proveedorOk && tipoPAOk && mesOk && anioOk;
+    const periodoOk = !periodoFiltro || periodoFiltro === 'Todos' || trabajo.periodo === periodoFiltro;
+    return proveedorOk && tipoPAOk && mesOk && anioOk && periodoOk;
   });
 
   const contarTrabajosCompletados = () => {
@@ -54,13 +60,23 @@ const DashboardPage: React.FC = () => {
       .reduce((total, trabajo) => total + Number(trabajo.precio || 0), 0);
   };
 
-  const obtenerMesActual = () => meses[mesFiltro];
+  const obtenerMesActual = () => {
+    if (mesFiltro === 'Todos') return 'Todos';
+    const idx = parseInt(mesFiltro, 10);
+    return isNaN(idx) ? 'Todos' : meses[idx];
+  };
 
   const exportarPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     let filtroProveedor = proveedorFiltro !== 'Todos' ? proveedorFiltro : 'Todos los proveedores';
     let filtroTipoPA = tipoPAFiltro !== 'Todos' ? tipoPAFiltro : 'Todos los tipos';
-    let filtroMes = meses[mesFiltro].charAt(0).toUpperCase() + meses[mesFiltro].slice(1);
+    let filtroMes = 'Todos';
+    if (mesFiltro !== 'Todos') {
+      const idx = parseInt(mesFiltro, 10);
+      if (!isNaN(idx)) {
+        filtroMes = meses[idx].charAt(0).toUpperCase() + meses[idx].slice(1);
+      }
+    }
     let filtroAnio = anioFiltro;
     const total = trabajosFiltrados
       .filter(trabajo => trabajo.estado === 'Terminado')
@@ -165,6 +181,23 @@ const DashboardPage: React.FC = () => {
               ))}
             </select>
           </div>
+          {/* Filtro de Periodo */}
+          <div className="flex flex-col">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-green-500" /> Periodo
+              </span>
+            </label>
+            <select
+              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all shadow-sm hover:border-green-400"
+              value={periodoFiltro}
+              onChange={e => setPeriodoFiltro(e.target.value)}
+            >
+              {periodosFiltro.map(periodo => (
+                <option key={periodo} value={periodo}>{periodo}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex flex-col">
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
               <span className="inline-flex items-center gap-1">
@@ -174,10 +207,11 @@ const DashboardPage: React.FC = () => {
             <select
               className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all shadow-sm hover:border-indigo-400"
               value={mesFiltro}
-              onChange={e => setMesFiltro(Number(e.target.value))}
+              onChange={e => setMesFiltro(e.target.value)}
             >
+              <option value="Todos">Todos</option>
               {meses.map((mes, idx) => (
-                <option key={mes} value={idx}>{mes.charAt(0).toUpperCase() + mes.slice(1)}</option>
+                <option key={mes} value={idx.toString()}>{mes.charAt(0).toUpperCase() + mes.slice(1)}</option>
               ))}
             </select>
           </div>

@@ -22,7 +22,8 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
     proveedor: '',
     busqueda: '',
     fechaInicio: '',
-    fechaFin: ''
+    fechaFin: '',
+    mes: ''
   });
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -45,6 +46,13 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
   useEffect(() => {
     applyFilters(filtros);
   }, [filtros, applyFilters]);
+
+  // Filtrado por mes
+  const trabajosFiltradosPorMes = trabajosFiltrados.filter(trabajo => {
+    if (!filtros.mes || filtros.mes === '') return true;
+    const mesTrabajo = new Date(trabajo.fechaRegistro).getMonth().toString();
+    return mesTrabajo === filtros.mes;
+  });
   
   const handleChangeEstado = async (id: string | undefined, estadoActual: string) => {
     if (!id) return;
@@ -100,7 +108,8 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
       proveedor: '',
       busqueda: '',
       fechaInicio: '',
-      fechaFin: ''
+      fechaFin: '',
+      mes: ''
     });
   };
   
@@ -126,7 +135,7 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
     }
   };
   
-  const trabajosOrdenados = [...trabajosFiltrados].sort((a, b) => {
+  const trabajosOrdenados = [...trabajosFiltradosPorMes].sort((a, b) => {
     if (!sortField) return 0;
     // Ordenar por campos conocidos de Trabajo
     switch (sortField) {
@@ -166,6 +175,21 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
         return 0;
     }
   });
+  
+  const itemsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(trabajosOrdenados.length / itemsPerPage);
+
+  const paginatedTrabajos = trabajosOrdenados.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
   
   return (
     <div className="space-y-4">
@@ -226,6 +250,32 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
                   {proveedor.nombre}
                 </option>
               ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Mes
+            </label>
+            <select
+              name="mes"
+              value={filtros.mes || ''}
+              onChange={handleFilterChange}
+              className="w-full p-2 border border-gray-300 rounded-md dark:border-dark-400 dark:bg-dark-300 dark:text-white"
+            >
+              <option value="">Todos</option>
+              <option value="0">Enero</option>
+              <option value="1">Febrero</option>
+              <option value="2">Marzo</option>
+              <option value="3">Abril</option>
+              <option value="4">Mayo</option>
+              <option value="5">Junio</option>
+              <option value="6">Julio</option>
+              <option value="7">Agosto</option>
+              <option value="8">Septiembre</option>
+              <option value="9">Octubre</option>
+              <option value="10">Noviembre</option>
+              <option value="11">Diciembre</option>
             </select>
           </div>
           
@@ -319,8 +369,8 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
             </tr>
           </thead>
           <tbody>
-            {trabajosOrdenados.length > 0 ? (
-              trabajosOrdenados.map((trabajo) => (
+            {paginatedTrabajos.length > 0 ? (
+              paginatedTrabajos.map((trabajo) => (
                 <tr 
                   key={trabajo.id} 
                   className={getRowClassName(trabajo.estado)}
@@ -394,6 +444,35 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-4 pb-6">
+          <button
+            className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-white disabled:opacity-50"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <button
+              key={page}
+              className={`px-2 py-1 rounded text-xs font-medium text-white ${page === currentPage ? 'bg-blue-600' : 'bg-gray-400 dark:bg-dark-300'}`}
+              onClick={() => handlePageChange(page)}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-white disabled:opacity-50"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}

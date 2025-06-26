@@ -57,4 +57,5 @@ export interface FilterOptions {
   busqueda?: string;
   fechaInicio?: string;
   fechaFin?: string;
+  mes?: string;
 }
