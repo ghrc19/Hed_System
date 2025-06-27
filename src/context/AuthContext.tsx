@@ -1,14 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence,
-  User as FirebaseUser
-} from 'firebase/auth';
-import { auth } from '../firebase/config';
+import React, { createContext, useContext, useState } from 'react';
 import { User } from '../types';
 
 interface AuthContextProps {
@@ -30,35 +20,20 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
-      setCurrentUser(user ? { uid: user.uid, email: user.email } : null);
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
+  const [loading, setLoading] = useState(false);
 
   const login = async (email: string, password: string, rememberMe: boolean) => {
-    try {
-      const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence;
-      await setPersistence(auth, persistenceType);
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error('Error en login:', error);
-      throw error;
-    }
+    setLoading(true);
+    await new Promise(res => setTimeout(res, 400));
+    setCurrentUser({ uid: 'mock-uid', email });
+    setLoading(false);
   };
 
   const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Error en logout:', error);
-      throw error;
-    }
+    setLoading(true);
+    await new Promise(res => setTimeout(res, 200));
+    setCurrentUser(null);
+    setLoading(false);
   };
 
   const value = {
@@ -70,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

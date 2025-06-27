@@ -40,7 +40,6 @@ const LoginForm: React.FC = () => {
   
   return (
     <div className="fixed right-0 top-0 min-h-screen h-full flex items-center justify-end bg-transparent z-10">
-      {/* Fondo de programación oscuro SOLO detrás del formulario */}
       <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-800 rounded-l-lg shadow-md my-16 mr-8 ml-auto relative overflow-hidden">
         <div className="absolute inset-0 w-full h-full -z-10 bg-cover bg-center bg-no-repeat opacity-90 dark:opacity-95 dark:brightness-40 rounded-l-lg" style={{backgroundImage: "url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80')"}}></div>
         <div className="text-center relative z-10">

@@ -10,7 +10,6 @@ const LoginPage: React.FC = () => {
     <div className="relative min-h-screen flex flex-col justify-center items-center bg-gray-100 dark:bg-gray-900">
       <div className="flex flex-col md:flex-row w-full max-w-5xl min-h-screen">
         <div className="hidden md:block flex-1 relative">
-          {/* Imagen de fondo o ilustración aquí */}
           <img
             src="https://images.unsplash.com/photo-1453928582365-b6ad33cbcf64?auto=format&fit=crop&w=1500&q=80"
             alt="Fondo programación oscuro"
