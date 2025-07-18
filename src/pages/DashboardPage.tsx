@@ -10,11 +10,13 @@ import useCatalogoStore from '../store/catalogoStore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const ExcelJS = window.ExcelJS;
+
 const DashboardPage: React.FC = () => {
   const { trabajos, fetchTrabajos } = useTrabajoStore();
   const { periodos, fetchPeriodos } = useCatalogoStore();
   const [proveedorFiltro, setProveedorFiltro] = useState<string>('Todos');
-  const [tipoPAFiltro, setTipoPAFiltro] = useState<string>('Todos');
+  const [tipoPAFiltro, setTipoPAFiltro] = useState<string[]>(['Todos']);
   const [periodoFiltro, setPeriodoFiltro] = useState<string>('Todos');
   const meses = [
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -33,18 +35,19 @@ const DashboardPage: React.FC = () => {
   }, [fetchTrabajos, fetchPeriodos]);
 
   const proveedores = ['Todos', ...Array.from(new Set(trabajos.map(t => t.proveedor).filter(Boolean)))];
-  const tiposPA = ['Todos', ...Array.from(new Set(trabajos.map(t => t.tipoPA).filter(Boolean)))];
   const periodosFiltro = ['Todos', ...periodos.map(p => p.nombre).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))];
 
-  const trabajosFiltrados = trabajos.filter(trabajo => {
-    const proveedorOk = proveedorFiltro === 'Todos' || trabajo.proveedor === proveedorFiltro;
-    const tipoPAOk = tipoPAFiltro === 'Todos' || trabajo.tipoPA === tipoPAFiltro;
-    const fecha = new Date(trabajo.fechaRegistro);
-    const mesOk = mesFiltro === 'Todos' || fecha.getMonth().toString() === mesFiltro;
-    const anioOk = fecha.getFullYear() === anioFiltro;
-    const periodoOk = !periodoFiltro || periodoFiltro === 'Todos' || trabajo.periodo === periodoFiltro;
-    return proveedorOk && tipoPAOk && mesOk && anioOk && periodoOk;
-  });
+  const trabajosFiltrados = trabajos
+    .filter(trabajo => {
+      const proveedorOk = proveedorFiltro === 'Todos' || trabajo.proveedor === proveedorFiltro;
+      const tipoPAOk = tipoPAFiltro.includes('Todos') || tipoPAFiltro.includes(trabajo.tipoPA);
+      const fecha = new Date(trabajo.fechaRegistro);
+      const mesOk = mesFiltro === 'Todos' || fecha.getMonth().toString() === mesFiltro;
+      const anioOk = fecha.getFullYear() === anioFiltro;
+      const periodoOk = !periodoFiltro || periodoFiltro === 'Todos' || trabajo.periodo === periodoFiltro;
+      return proveedorOk && tipoPAOk && mesOk && anioOk && periodoOk;
+    })
+    .sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime());
 
   const contarTrabajosCompletados = () => {
     return trabajosFiltrados.filter(trabajo => trabajo.estado === 'Terminado').length;
@@ -68,8 +71,43 @@ const DashboardPage: React.FC = () => {
 
   const exportarPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+    const encabezados = [
+      "Nro", "Cliente", "Curso", "Fecha de Registro", "Fecha de Entrega", "Precio", "Proveedor", "TipoPA", "Periodo"
+    ];
+
+    const datos = trabajosFiltrados.map((trabajo, idx) => ([
+      idx + 1,
+      trabajo.nombreCliente,
+      trabajo.curso,
+      trabajo.fechaRegistro,
+      trabajo.fechaEntrega || '',
+      trabajo.precio ? `S/ ${Number(trabajo.precio).toLocaleString()}` : 'S/ 0',
+      trabajo.proveedor,
+      trabajo.tipoPA,
+      trabajo.periodo
+    ]));
+
+    const subtotal = datos.reduce((acc, curr) => acc + (typeof curr[5] === 'number' ? curr[5] : Number(curr[5].toString().replace(/[^\d.]/g, ''))), 0);
+
+    const subtotalRow = ["", "", "", "", "", `S/ ${subtotal.toLocaleString()}`, "", "", "SUBTOTAL"];
+
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(44, 62, 80);
+    doc.text('Reporte de Trabajos', 40, 40);
+
+
+    doc.setDrawColor(54, 79, 107);
+    doc.setLineWidth(1.2);
+    doc.roundedRect(35, 55, 500, 80, 10, 10, 'S');
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(54, 79, 107);
     let filtroProveedor = proveedorFiltro !== 'Todos' ? proveedorFiltro : 'Todos los proveedores';
-    let filtroTipoPA = tipoPAFiltro !== 'Todos' ? tipoPAFiltro : 'Todos los tipos';
+    let filtroTipoPA = tipoPAFiltro.includes('Todos') ? 'Todos los tipos' : tipoPAFiltro.join(', ');
+    let filtroPeriodo = periodoFiltro !== 'Todos' ? periodoFiltro : 'Todos los periodos';
     let filtroMes = 'Todos';
     if (mesFiltro !== 'Todos') {
       const idx = parseInt(mesFiltro, 10);
@@ -78,62 +116,26 @@ const DashboardPage: React.FC = () => {
       }
     }
     let filtroAnio = anioFiltro;
-    const total = trabajosFiltrados
-      .filter(trabajo => trabajo.estado === 'Terminado')
-      .reduce((sum, trabajo) => sum + Number(trabajo.precio || 0), 0);
+    doc.text(`Proveedor: ${filtroProveedor}`, 45, 75);
+    doc.text(`Tipo de PA: ${filtroTipoPA}`, 250, 75);
+    doc.text(`Periodo: ${filtroPeriodo}`, 45, 95);
+    doc.text(`Mes: ${filtroMes}`, 250, 95);
+    doc.text(`Año: ${filtroAnio}`, 45, 115);
 
-    // Eliminados iconos y variables no usadas
-    let isFirstPage = true;
-    const header = () => {
-      doc.setDrawColor(44, 62, 80);
-      doc.setLineWidth(2);
-      doc.roundedRect(30, 30, doc.internal.pageSize.getWidth() - 60, doc.internal.pageSize.getHeight() - 60, 18, 18, 'S');
-      if (isFirstPage) {
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(44, 62, 80);
-        doc.setFontSize(22);
-        doc.text(`Reporte de Trabajos`, 40, 48, { baseline: 'top' });
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(13);
-        doc.setTextColor(54, 79, 107);
-        doc.text(`Proveedor: ${filtroProveedor}`, 40, 72, { baseline: 'top' });
-        doc.text(`Tipo de PA: ${filtroTipoPA}`, 300, 72, { baseline: 'top' });
-        doc.text(`Mes: ${filtroMes}`, 40, 92, { baseline: 'top' });
-        doc.text(`Año: ${filtroAnio}`, 300, 92, { baseline: 'top' });
-        isFirstPage = false;
-      }
-    };
 
     autoTable(doc, {
-      head: [["Cliente", "Curso", "Fecha", "Estado", "Precio"]],
-      body: trabajosFiltrados.map(trabajo => [
-        trabajo.nombreCliente,
-        trabajo.curso,
-        trabajo.fechaRegistro,
-        trabajo.estado,
-        trabajo.precio ? `S/ ${Number(trabajo.precio).toLocaleString()}` : 'S/ 0'
-      ]),
-      startY: 110,
-      styles: { fontSize: 11, font: 'helvetica', textColor: [44, 62, 80], lineColor: [54, 79, 107], lineWidth: 0.5 },
+      head: [encabezados],
+      body: [...datos, subtotalRow],
+      startY: 145,
+      styles: { fontSize: 10, font: 'helvetica', textColor: [44, 62, 80], lineColor: [54, 79, 107], lineWidth: 0.5 },
       headStyles: { fillColor: [54, 79, 107], textColor: [255,255,255], fontStyle: 'bold', fontSize: 12 },
       bodyStyles: { fillColor: [245, 247, 250] },
       alternateRowStyles: { fillColor: [230, 236, 245] },
-      margin: { left: 50, right: 50 },
+      margin: { left: 30, right: 30 },
       tableLineColor: [44, 62, 80],
       tableLineWidth: 0.5,
-      didDrawPage: () => {
-        header();
-      }
     });
 
-    const finalY = (doc as any).lastAutoTable?.finalY || 110;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.setTextColor(44, 62, 80);
-    const totalText = `Total: S/ ${total.toLocaleString()}`;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const textWidth = doc.getTextWidth(totalText);
-    doc.text(totalText, pageWidth - textWidth - 80, finalY + 40, { baseline: 'top' });
 
     const proveedorNombre = proveedorFiltro !== 'Todos' ? proveedorFiltro.replace(/\s+/g, '_') : 'TodosLosProveedores';
     const fechaHoy = new Date();
@@ -142,103 +144,243 @@ const DashboardPage: React.FC = () => {
     doc.save(nombreArchivo);
   };
 
+  const exportarExcel = () => {
+    if (!ExcelJS || !ExcelJS.Workbook) {
+      alert('ExcelJS no está disponible. Asegúrate de incluir el script CDN en tu index.html.');
+      return;
+    }
+
+    const datos = trabajosFiltrados.map((trabajo, idx) => ([
+      idx + 1,
+      trabajo.nombreCliente,
+      trabajo.curso,
+      trabajo.fechaRegistro,
+      trabajo.fechaEntrega || '',
+      typeof trabajo.precio === 'number' ? trabajo.precio : Number(trabajo.precio || 0),
+      trabajo.proveedor,
+      trabajo.tipoPA,
+      trabajo.periodo
+    ]));
+
+    const subtotal = datos.reduce((acc, curr) => acc + (typeof curr[5] === 'number' ? curr[5] : Number(curr[5])), 0);
+
+    const proveedorNombre = proveedorFiltro !== 'Todos' ? proveedorFiltro.replace(/\s+/g, '_') : 'TodosLosProveedores';
+    const fechaHoy = new Date();
+    const fechaStr = `${fechaHoy.getFullYear()}-${(fechaHoy.getMonth()+1).toString().padStart(2,'0')}-${fechaHoy.getDate().toString().padStart(2,'0')}`;
+    const nombreArchivo = `${proveedorNombre}_${fechaStr}.xlsx`;
+
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Trabajos');
+
+
+    worksheet.addRow(["Nro", "Cliente", "Curso", "Fecha de Registro", "Fecha de Entrega", "Precio", "Proveedor", "TipoPA", "Periodo"]);
+
+    datos.forEach(row => worksheet.addRow(row));
+
+    const subtotalRow = worksheet.addRow(["", "", "", "", "", subtotal, "", "", "SUBTOTAL"]);
+
+
+    worksheet.getRow(1).eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '25619B' }
+      };
+      cell.alignment = { horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin', color: { argb: '25619B' } },
+        bottom: { style: 'thin', color: { argb: '25619B' } },
+        left: { style: 'thin', color: { argb: '25619B' } },
+        right: { style: 'thin', color: { argb: '25619B' } }
+      };
+    });
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell(cell => {
+        cell.alignment = { horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'B0B0B0' } },
+          bottom: { style: 'thin', color: { argb: 'B0B0B0' } },
+          left: { style: 'thin', color: { argb: 'B0B0B0' } },
+          right: { style: 'thin', color: { argb: 'B0B0B0' } }
+        };
+      });
+    });
+
+    subtotalRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: '25619B' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FDE68A' }
+      };
+    });
+
+    worksheet.columns = [
+      { width: 5 },
+      { width: 18 },
+      { width: 18 },
+      { width: 14 },
+      { width: 14 },
+      { width: 10 },
+      { width: 18 },
+      { width: 10 },
+      { width: 12 }
+    ];
+
+
+    workbook.xlsx.writeBuffer().then(buffer => {
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Navbar />
       <main className="container mx-auto px-2 sm:px-4 py-8 w-full max-w-7xl">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center md:text-left">Dashboard</h1>
-        <div className="flex flex-col md:flex-row gap-4 mb-8 items-end w-full">
-          {/* Filtros */}
-          <div className="flex flex-col">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
-              <span className="inline-flex items-center gap-1">
-                <BarChart2 className="w-4 h-4 text-blue-500" /> Proveedor
-              </span>
-            </label>
-            <select
-              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all shadow-sm hover:border-blue-400"
-              value={proveedorFiltro}
-              onChange={e => setProveedorFiltro(e.target.value)}
-            >
-              {proveedores.map(prov => (
-                <option key={prov} value={prov}>{prov}</option>
-              ))}
-            </select>
+        <div className="mb-8 w-full">
+        
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 flex flex-wrap gap-6 items-center justify-between">
+            
+            <div className="flex flex-col items-start min-w-[180px]">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <span className="inline-flex items-center gap-1">
+                  <BarChart2 className="w-4 h-4 text-blue-500" /> Proveedor
+                </span>
+              </label>
+              <select
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all shadow-sm hover:border-blue-400"
+                value={proveedorFiltro}
+                onChange={e => setProveedorFiltro(e.target.value)}
+              >
+                {proveedores.map(prov => (
+                  <option key={prov} value={prov}>{prov}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex flex-col items-start min-w-[220px] h-full justify-between">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="w-4 h-4 text-purple-500" /> Tipo de PA
+                </span>
+              </label>
+              <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 w-full flex flex-row gap-3 flex-wrap items-center min-h-[44px]">
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={tipoPAFiltro.includes('Todos')}
+                    onChange={() => setTipoPAFiltro(['Todos'])}
+                    className="form-checkbox h-5 w-5 text-purple-600 dark:bg-gray-700 dark:border-gray-500 focus:ring-2 focus:ring-purple-400"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-200">Todos</span>
+                </label>
+                {['PA-01', 'PA-02', 'PA-03', 'EF', 'ES'].map(tipo => (
+                  <label key={tipo} className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={tipoPAFiltro.includes(tipo)}
+                      onChange={() => {
+                        if (tipoPAFiltro.includes('Todos')) {
+                          setTipoPAFiltro([tipo]);
+                        } else if (tipoPAFiltro.includes(tipo)) {
+                          const nuevos = tipoPAFiltro.filter(t => t !== tipo);
+                          setTipoPAFiltro(nuevos.length === 0 ? ['Todos'] : nuevos);
+                        } else {
+                          setTipoPAFiltro([...tipoPAFiltro, tipo]);
+                        }
+                      }}
+                      className="form-checkbox h-5 w-5 text-purple-600 dark:bg-gray-700 dark:border-gray-500 focus:ring-2 focus:ring-purple-400"
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-200">{tipo}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-start min-w-[180px]">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="w-4 h-4 text-green-500" /> Periodo
+                </span>
+              </label>
+              <select
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-400 transition-all shadow-sm hover:border-green-400"
+                value={periodoFiltro}
+                onChange={e => setPeriodoFiltro(e.target.value)}
+              >
+                {periodosFiltro.map(periodo => (
+                  <option key={periodo} value={periodo}>{periodo}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex flex-col items-start min-w-[180px]">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="w-4 h-4 text-indigo-500" /> Mes
+                </span>
+              </label>
+              <select
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all shadow-sm hover:border-indigo-400"
+                value={mesFiltro}
+                onChange={e => setMesFiltro(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                {meses.map((mes, idx) => (
+                  <option key={mes} value={idx.toString()}>{mes.charAt(0).toUpperCase() + mes.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex flex-col items-start min-w-[120px]">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="w-4 h-4 text-amber-500" /> Año
+                </span>
+              </label>
+              <select
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all shadow-sm hover:border-amber-400"
+                value={anioFiltro}
+                onChange={e => setAnioFiltro(Number(e.target.value))}
+              >
+                {anios.map(anio => (
+                  <option key={anio} value={anio}>{anio}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="w-full flex justify-center items-center mt-4">
+              <div className="flex gap-4">
+                <button
+                  onClick={exportarPDF}
+                  className="px-6 py-2 rounded-lg bg-red-600 text-white shadow hover:bg-red-700 transition-colors flex items-center gap-2 h-12 text-base font-semibold"
+                  title="Exportar a PDF"
+                >
+                  <FaFilePdf className="h-6 w-6" />
+                  Exportar
+                </button>
+                <button
+                  onClick={exportarExcel}
+                  className="px-6 py-2 rounded-lg bg-green-600 text-white shadow hover:bg-green-700 transition-colors flex items-center gap-2 h-12 text-base font-semibold"
+                  title="Exportar a Excel"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" fill="#fff"/><path stroke="#22c55e" strokeWidth="2" d="M8 8l8 8M16 8l-8 8"/></svg>
+                  Exportar Excel
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-purple-500" /> Tipo de PA
-              </span>
-            </label>
-            <select
-              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm hover:border-purple-400"
-              value={tipoPAFiltro}
-              onChange={e => setTipoPAFiltro(e.target.value)}
-            >
-              {tiposPA.map(tipo => (
-                <option key={tipo} value={tipo}>{tipo}</option>
-              ))}
-            </select>
-          </div>
-          {/* Filtro de Periodo */}
-          <div className="flex flex-col">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-green-500" /> Periodo
-              </span>
-            </label>
-            <select
-              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all shadow-sm hover:border-green-400"
-              value={periodoFiltro}
-              onChange={e => setPeriodoFiltro(e.target.value)}
-            >
-              {periodosFiltro.map(periodo => (
-                <option key={periodo} value={periodo}>{periodo}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-indigo-500" /> Mes
-              </span>
-            </label>
-            <select
-              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all shadow-sm hover:border-indigo-400"
-              value={mesFiltro}
-              onChange={e => setMesFiltro(e.target.value)}
-            >
-              <option value="Todos">Todos</option>
-              {meses.map((mes, idx) => (
-                <option key={mes} value={idx.toString()}>{mes.charAt(0).toUpperCase() + mes.slice(1)}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-amber-500" /> Año
-              </span>
-            </label>
-            <select
-              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all shadow-sm hover:border-amber-400"
-              value={anioFiltro}
-              onChange={e => setAnioFiltro(Number(e.target.value))}
-            >
-              {anios.map(anio => (
-                <option key={anio} value={anio}>{anio}</option>
-              ))}
-            </select>
-          </div>
-          {/* Botón de exportar PDF al lado de los filtros */}
-          <button
-            onClick={exportarPDF}
-            className="p-2 rounded-lg bg-red-600 text-white shadow hover:bg-red-700 transition-colors flex items-center h-10 mt-6"
-            title="Exportar a PDF"
-          >
-            <FaFilePdf className="h-6 w-6" />
-          </button>
         </div>
         <div id="dashboard-export">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 w-full">

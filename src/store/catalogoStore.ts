@@ -16,19 +16,19 @@ interface CatalogoState {
   periodos: Periodo[];
   isLoading: boolean;
   
-  // Cursos
+
   fetchCursos: () => Promise<void>;
   addCurso: (curso: Curso) => Promise<void>;
   updateCurso: (id: string, curso: Curso) => Promise<void>;
   deleteCurso: (id: string) => Promise<void>;
   
-  // Proveedores
+
   fetchProveedores: () => Promise<void>;
   addProveedor: (proveedor: Proveedor) => Promise<void>;
   updateProveedor: (id: string, proveedor: Proveedor) => Promise<void>;
   deleteProveedor: (id: string) => Promise<void>;
   
-  // Periodos
+
   fetchPeriodos: () => Promise<void>;
   addPeriodo: (periodo: Periodo) => Promise<void>;
   updatePeriodo: (id: string, periodo: Periodo) => Promise<void>;
@@ -41,7 +41,7 @@ const useCatalogoStore = create<CatalogoState>((set, get) => ({
   periodos: [],
   isLoading: false,
   
-  // Cursos
+
   fetchCursos: async () => {
     set({ isLoading: true });
     try {
@@ -92,7 +92,7 @@ const useCatalogoStore = create<CatalogoState>((set, get) => ({
     }
   },
   
-  // Proveedores
+
   fetchProveedores: async () => {
     set({ isLoading: true });
     try {
@@ -146,7 +146,7 @@ const useCatalogoStore = create<CatalogoState>((set, get) => ({
     }
   },
   
-  // Periodos
+
   fetchPeriodos: async () => {
     set({ isLoading: true });
     try {

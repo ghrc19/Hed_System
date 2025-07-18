@@ -176,7 +176,7 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
     }
   });
   
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(trabajosOrdenados.length / itemsPerPage);
 
@@ -194,6 +194,20 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
   return (
     <div className="space-y-4">
       <div className="bg-white dark:bg-dark-200 p-4 rounded-lg shadow">
+      {/* Selector de cantidad por página */}
+      <div className="flex items-center gap-2 mb-2">
+        <label htmlFor="itemsPerPage" className="text-sm text-gray-700 dark:text-gray-300">Trabajos por página:</label>
+        <select
+          id="itemsPerPage"
+          value={itemsPerPage}
+          onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+          className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-300 text-gray-900 dark:text-white px-2 py-1"
+        >
+          <option value={10}>10</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+      </div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Filtros</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
@@ -445,11 +459,10 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
         </table>
       </div>
 
-      {/* Paginación */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-4 pb-6">
           <button
-            className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-white disabled:opacity-50"
+            className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-gray-900 dark:text-white disabled:opacity-50"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
           >
@@ -458,14 +471,14 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
             <button
               key={page}
-              className={`px-2 py-1 rounded text-xs font-medium text-white ${page === currentPage ? 'bg-blue-600' : 'bg-gray-400 dark:bg-dark-300'}`}
+              className={`px-2 py-1 rounded text-xs font-medium ${page === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-400 dark:bg-dark-300 text-gray-900 dark:text-white'}`}
               onClick={() => handlePageChange(page)}
             >
               {page}
             </button>
           ))}
           <button
-            className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-white disabled:opacity-50"
+            className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-gray-900 dark:text-white disabled:opacity-50"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
