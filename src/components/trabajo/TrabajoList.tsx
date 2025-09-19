@@ -460,7 +460,7 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-4 pb-6">
+        <div className="flex justify-center items-center mt-4 pb-6">
           <button
             className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-gray-900 dark:text-white disabled:opacity-50"
             onClick={() => handlePageChange(currentPage - 1)}
@@ -468,15 +468,35 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
           >
             Anterior
           </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-            <button
-              key={page}
-              className={`px-2 py-1 rounded text-xs font-medium ${page === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-400 dark:bg-dark-300 text-gray-900 dark:text-white'}`}
-              onClick={() => handlePageChange(page)}
-            >
-              {page}
-            </button>
-          ))}
+          {(() => {
+            const pages: (number | string)[] = [];
+            if (totalPages <= 7) {
+              for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+              pages.push(1);
+              if (currentPage > 4) pages.push('...');
+              for (let i = Math.max(2, currentPage - 2); i <= Math.min(totalPages - 1, currentPage + 2); i++) {
+                if (i === 2 && currentPage > 5) pages.push('...');
+                pages.push(i);
+                if (i === totalPages - 1 && currentPage < totalPages - 4) pages.push('...');
+              }
+              if (currentPage < totalPages - 3) pages.push('...');
+              pages.push(totalPages);
+            }
+            return pages.map((page, idx) =>
+              typeof page === 'number' ? (
+                <button
+                  key={page}
+                  className={`px-2 py-1 rounded text-xs font-medium ${page === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-400 dark:bg-dark-300 text-gray-900 dark:text-white'}`}
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </button>
+              ) : (
+                <span key={"dots-" + idx} className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">...</span>
+              )
+            );
+          })()}
           <button
             className="px-2 py-1 rounded bg-gray-200 dark:bg-dark-400 text-xs font-medium text-gray-900 dark:text-white disabled:opacity-50"
             onClick={() => handlePageChange(currentPage + 1)}
