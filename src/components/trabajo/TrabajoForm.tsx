@@ -6,10 +6,11 @@ import Button from '../ui/Button';
 import { Trabajo } from '../../types';
 import { getTodayDate } from '../../lib/utils';
 import useCatalogoStore from '../../store/catalogoStore';
-import { Clipboard, Copy, User, BookOpen, DollarSign, Calendar, Link as LinkIcon, Plus } from 'lucide-react';
+import { Clipboard, Copy, User, DollarSign, Calendar, Link as LinkIcon, Plus } from 'lucide-react';
 import CursoDialog from '../catalogo/CursoDialog';
 import ProveedorDialog from '../catalogo/ProveedorDialog';
 import PeriodoDialog from '../catalogo/PeriodoDialog';
+import TipoPADialog from '../catalogo/TipoPADialog';
 
 interface TrabajoFormProps {
   onSubmit: (data: Trabajo) => void;
@@ -45,6 +46,8 @@ const TrabajoForm: React.FC<TrabajoFormProps> = ({
     cursos, 
     proveedores, 
     periodos, 
+    periodoActivo,
+    tipoPAActivo,
     fetchCursos, 
     fetchProveedores, 
     fetchPeriodos 
@@ -54,11 +57,11 @@ const TrabajoForm: React.FC<TrabajoFormProps> = ({
     nombreCliente: 'Estudiante',
     proveedor: '',
     curso: '',
-    tipoPA: '',
-    tipoTrabajo: '',
+    tipoPA: initialData?.tipoPA || tipoPAActivo || '',
+    tipoTrabajo: initialData?.tipoTrabajo || 'Trabajo Individual',
     fechaRegistro: getTodayDate(),
     fechaEntrega: '',
-    periodo: '',
+    periodo: initialData?.periodo || periodoActivo?.nombre || '',
     precio: 20,
     url: '',
     estado: 'Pendiente',
@@ -82,6 +85,27 @@ const TrabajoForm: React.FC<TrabajoFormProps> = ({
       reset(initialData);
     }
   }, [initialData, reset]);
+
+  // Efecto para autocompletar el período activo cuando no hay initialData
+  useEffect(() => {
+    if (!initialData && periodoActivo && periodoActivo.nombre) {
+      setValue('periodo', periodoActivo.nombre);
+    }
+  }, [periodoActivo, initialData, setValue]);
+
+  // Efecto para preseleccionar "Trabajo Individual" cuando no hay initialData
+  useEffect(() => {
+    if (!initialData) {
+      setValue('tipoTrabajo', 'Trabajo Individual');
+    }
+  }, [initialData, setValue]);
+
+  // Efecto para autocompletar el tipo PA activo cuando no hay initialData
+  useEffect(() => {
+    if (!initialData && tipoPAActivo) {
+      setValue('tipoPA', tipoPAActivo);
+    }
+  }, [tipoPAActivo, initialData, setValue]);
 
   const cursosOptions = cursos
     .slice()
@@ -131,6 +155,7 @@ const TrabajoForm: React.FC<TrabajoFormProps> = ({
   const [openCursoDialog, setOpenCursoDialog] = React.useState(false);
   const [openProveedorDialog, setOpenProveedorDialog] = React.useState(false);
   const [openPeriodoDialog, setOpenPeriodoDialog] = React.useState(false);
+  const [openTipoPADialog, setOpenTipoPADialog] = React.useState(false);
 
   return (
     <>
@@ -186,12 +211,26 @@ const TrabajoForm: React.FC<TrabajoFormProps> = ({
             </Button>
           </div>
 
-          <Select
-            label="Tipo de PA"
-            options={tiposPAOptions}
-            {...register('tipoPA', { required: 'Este campo es requerido' })}
-            error={errors.tipoPA?.message}
-          />
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Select
+                label="Tipo de PA"
+                options={tiposPAOptions}
+                {...register('tipoPA', { required: 'Este campo es requerido' })}
+                error={errors.tipoPA?.message}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="success"
+              size="sm"
+              onClick={() => setOpenTipoPADialog(true)}
+              aria-label="Seleccionar tipo PA activo"
+              className="rounded-full shadow-md p-0 w-9 h-9 flex items-center justify-center transition-transform hover:scale-110 hover:bg-green-700 focus:ring-2 focus:ring-green-400"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
 
           <Select
             label="Tipo de Trabajo"
@@ -303,6 +342,7 @@ const TrabajoForm: React.FC<TrabajoFormProps> = ({
       <CursoDialog isOpen={openCursoDialog} onClose={() => setOpenCursoDialog(false)} />
       <ProveedorDialog isOpen={openProveedorDialog} onClose={() => setOpenProveedorDialog(false)} />
       <PeriodoDialog isOpen={openPeriodoDialog} onClose={() => setOpenPeriodoDialog(false)} />
+      <TipoPADialog isOpen={openTipoPADialog} onClose={() => setOpenTipoPADialog(false)} />
     </>
   );
 };

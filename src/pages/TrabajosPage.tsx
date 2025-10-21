@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Navbar from '../components/layout/Navbar';
 import TrabajoForm from '../components/trabajo/TrabajoForm';
 import TrabajoList from '../components/trabajo/TrabajoList';
@@ -7,10 +7,11 @@ import Button from '../components/ui/Button';
 import CursoDialog from '../components/catalogo/CursoDialog';
 import ProveedorDialog from '../components/catalogo/ProveedorDialog';
 import PeriodoDialog from '../components/catalogo/PeriodoDialog';
+import TipoPADialog from '../components/catalogo/TipoPADialog';
 import { Trabajo } from '../types';
 import useTrabajoStore from '../store/trabajosStore';
 import { showSuccess, showError } from '../components/layout/NotificationManager';
-import { Plus, BookOpen, Users, Calendar } from 'lucide-react';
+import { Plus, BookOpen, Users, Calendar, FileText } from 'lucide-react';
 
 const TrabajosPage: React.FC = () => {
   const { addTrabajo, updateTrabajo, isLoading } = useTrabajoStore();
@@ -20,6 +21,7 @@ const TrabajosPage: React.FC = () => {
   const [cursoDialogOpen, setCursoDialogOpen] = useState(false);
   const [proveedorDialogOpen, setProveedorDialogOpen] = useState(false);
   const [periodoDialogOpen, setPeriodoDialogOpen] = useState(false);
+  const [tipoPADialogOpen, setTipoPADialogOpen] = useState(false);
   
   const abrirDialogo = () => {
     setTrabajoEditar(undefined);
@@ -76,6 +78,10 @@ const TrabajosPage: React.FC = () => {
                 <Calendar className="w-5 h-5 mr-2" />
                 Periodos
               </Button>
+              <Button variant="outline" onClick={() => setTipoPADialogOpen(true)} className="w-full sm:w-auto">
+                <FileText className="w-5 h-5 mr-2" />
+                Tipo PA
+              </Button>
             </div>
           </div>
         </div>
@@ -105,6 +111,10 @@ const TrabajosPage: React.FC = () => {
         <PeriodoDialog 
           isOpen={periodoDialogOpen}
           onClose={() => setPeriodoDialogOpen(false)}
+        />
+        <TipoPADialog 
+          isOpen={tipoPADialogOpen}
+          onClose={() => setTipoPADialogOpen(false)}
         />
       </main>
     </div>

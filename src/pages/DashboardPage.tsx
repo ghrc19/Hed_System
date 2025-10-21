@@ -14,7 +14,7 @@ const ExcelJS = window.ExcelJS;
 
 const DashboardPage: React.FC = () => {
   const { trabajos, fetchTrabajos } = useTrabajoStore();
-  const { periodos, fetchPeriodos } = useCatalogoStore();
+  const { periodos, fetchPeriodos, periodoActivo, tipoPAActivo } = useCatalogoStore();
   const [proveedorFiltro, setProveedorFiltro] = useState<string>('Todos');
   const [tipoPAFiltro, setTipoPAFiltro] = useState<string[]>(['Todos']);
   const [periodoFiltro, setPeriodoFiltro] = useState<string>('Todos');
@@ -33,6 +33,19 @@ const DashboardPage: React.FC = () => {
     fetchTrabajos();
     fetchPeriodos();
   }, [fetchTrabajos, fetchPeriodos]);
+
+  // Efecto para establecer valores activos como predeterminados
+  useEffect(() => {
+    if (tipoPAActivo && tipoPAFiltro.includes('Todos')) {
+      setTipoPAFiltro([tipoPAActivo]);
+    }
+  }, [tipoPAActivo]);
+
+  useEffect(() => {
+    if (periodoActivo && periodoFiltro === 'Todos') {
+      setPeriodoFiltro(periodoActivo.nombre);
+    }
+  }, [periodoActivo]);
 
   const proveedores = ['Todos', ...Array.from(new Set(trabajos.map(t => t.proveedor).filter(Boolean)))];
   const periodosFiltro = ['Todos', ...periodos.map(p => p.nombre).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))];

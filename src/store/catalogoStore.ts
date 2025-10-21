@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import {
   collection,
   addDoc,
@@ -14,6 +15,8 @@ interface CatalogoState {
   cursos: Curso[];
   proveedores: Proveedor[];
   periodos: Periodo[];
+  periodoActivo: Periodo | null;
+  tipoPAActivo: string | null;
   isLoading: boolean;
   
 
@@ -33,29 +36,36 @@ interface CatalogoState {
   addPeriodo: (periodo: Periodo) => Promise<void>;
   updatePeriodo: (id: string, periodo: Periodo) => Promise<void>;
   deletePeriodo: (id: string) => Promise<void>;
+  setPeriodoActivo: (periodo: Periodo | null) => void;
+  syncPeriodoActivo: () => void;
+  setTipoPAActivo: (tipoPA: string | null) => void;
 }
 
-const useCatalogoStore = create<CatalogoState>((set, get) => ({
-  cursos: [],
-  proveedores: [],
-  periodos: [],
-  isLoading: false,
-  
+const useCatalogoStore = create<CatalogoState>()(
+  persist(
+    (set, get) => ({
+      cursos: [],
+      proveedores: [],
+      periodos: [],
+      periodoActivo: null,
+      tipoPAActivo: null,
+      isLoading: false,
+      
 
-  fetchCursos: async () => {
-    set({ isLoading: true });
-    try {
-      const querySnapshot = await getDocs(collection(db, 'cursos'));
-      const cursosData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Curso[];
-      set({ cursos: cursosData, isLoading: false });
-    } catch (error) {
-      console.error('Error al obtener cursos:', error);
-      set({ isLoading: false });
-    }
-  },
+      fetchCursos: async () => {
+        set({ isLoading: true });
+        try {
+          const querySnapshot = await getDocs(collection(db, 'cursos'));
+          const cursosData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Curso[];
+          set({ cursos: cursosData, isLoading: false });
+        } catch (error) {
+          console.error('Error al obtener cursos:', error);
+          set({ isLoading: false });
+        }
+      },
   
   addCurso: async (curso) => {
     set({ isLoading: true });
@@ -156,6 +166,9 @@ const useCatalogoStore = create<CatalogoState>((set, get) => ({
         ...doc.data()
       })) as Periodo[];
       set({ periodos: periodosData, isLoading: false });
+      
+      // Sincronizar período activo después de cargar los períodos
+      get().syncPeriodoActivo();
     } catch (error) {
       console.error('Error al obtener periodos:', error);
       set({ isLoading: false });
@@ -195,7 +208,35 @@ const useCatalogoStore = create<CatalogoState>((set, get) => ({
       console.error('Error al eliminar periodo:', error);
       set({ isLoading: false });
     }
+  },
+
+  setPeriodoActivo: (periodo) => {
+    set({ periodoActivo: periodo });
+  },
+
+  syncPeriodoActivo: () => {
+    const { periodoActivo, periodos } = get();
+    if (periodoActivo && periodoActivo.id) {
+      // Verificar si el período activo aún existe en la lista de períodos
+      const existePeriodo = periodos.find(p => p.id === periodoActivo.id);
+      if (!existePeriodo) {
+        // Si el período ya no existe, limpiar el período activo
+        set({ periodoActivo: null });
+      }
+    }
+  },
+
+  setTipoPAActivo: (tipoPA) => {
+    set({ tipoPAActivo: tipoPA });
   }
-}));
+}),
+{
+  name: 'catalogo-storage',
+  partialize: (state) => ({ 
+    periodoActivo: state.periodoActivo,
+    tipoPAActivo: state.tipoPAActivo 
+  }),
+}
+));
 
 export default useCatalogoStore;
