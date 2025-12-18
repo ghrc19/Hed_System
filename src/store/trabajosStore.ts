@@ -9,7 +9,8 @@ import {
   query,
   where,
   Timestamp,
-  DocumentData
+  DocumentData,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Trabajo, FilterOptions } from '../types';
@@ -95,9 +96,11 @@ const useTrabajoStore = create<TrabajoStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const trabajoRef = doc(db, 'trabajos', id);
-      const updateData: { estado: string; fechaEntrega?: string } = { estado };
+      const updateData: { estado: string; fechaEntrega?: any } = { estado };
       
-      if (fechaEntrega) {
+      if (fechaEntrega === 'FROM_SERVER') {
+        updateData.fechaEntrega = serverTimestamp();
+      } else if (fechaEntrega) {
         updateData.fechaEntrega = fechaEntrega;
       }
       

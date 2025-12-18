@@ -59,7 +59,6 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
     
     try {
       let nuevoEstado: 'Pendiente' | 'Terminado';
-      const fechaEntrega = new Date().toISOString().split('T')[0];
       
       if (estadoActual === 'Terminado') {
         nuevoEstado = 'Pendiente';
@@ -67,7 +66,7 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
         nuevoEstado = 'Terminado';
       }
       
-      await updateEstado(id, nuevoEstado, nuevoEstado === 'Terminado' ? fechaEntrega : '');
+      await updateEstado(id, nuevoEstado, nuevoEstado === 'Terminado' ? 'FROM_SERVER' : '');
       showSuccess(`Estado actualizado a: ${nuevoEstado}`);
     } catch (error) {
       showError('Error al actualizar el estado');
