@@ -39,10 +39,19 @@ const useTrabajoStore = create<TrabajoStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const querySnapshot = await getDocs(collection(db, 'trabajos'));
-      const trabajosData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Trabajo[];
+      const trabajosData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          fechaRegistro: data.fechaRegistro instanceof Timestamp 
+            ? data.fechaRegistro.toDate().toISOString().split('T')[0]
+            : data.fechaRegistro,
+          fechaEntrega: data.fechaEntrega instanceof Timestamp
+            ? data.fechaEntrega.toDate().toISOString().split('T')[0]
+            : data.fechaEntrega
+        } as Trabajo;
+      });
       
       const sortedTrabajos = sortByStatus(trabajosData);
       

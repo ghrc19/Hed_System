@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Trash2, CheckCircle, RefreshCw, XCircle, Search, FilterX } from 'lucide-react';
+import { Edit, Trash2, CheckCircle, RefreshCw, Search, FilterX } from 'lucide-react';
 import Button from '../ui/Button';
 import { Trabajo, FilterOptions } from '../../types';
 import useTrabajoStore from '../../store/trabajosStore';
-import { getStatusColor, getRowClassName } from '../../lib/utils';
+import { getStatusColor, getRowClassName, formatDate } from '../../lib/utils';
 import useCatalogoStore from '../../store/catalogoStore';
 import { showSuccess, showError } from '../layout/NotificationManager';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -14,7 +14,7 @@ interface TrabajoListProps {
 
 const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
   const { trabajosFiltrados, fetchTrabajos, updateEstado, deleteTrabajo, applyFilters } = useTrabajoStore();
-  const { cursos, proveedores, periodos, fetchCursos, fetchProveedores, fetchPeriodos } = useCatalogoStore();
+  const { proveedores, periodos, fetchProveedores, fetchPeriodos } = useCatalogoStore();
   
   const [filtros, setFiltros] = useState<FilterOptions>({
     tipoPA: '',
@@ -38,10 +38,9 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
   
   useEffect(() => {
     fetchTrabajos();
-    fetchCursos();
     fetchProveedores();
     fetchPeriodos();
-  }, [fetchTrabajos, fetchCursos, fetchProveedores, fetchPeriodos]);
+  }, [fetchTrabajos, fetchProveedores, fetchPeriodos]);
 
   useEffect(() => {
     applyFilters(filtros);
@@ -401,10 +400,10 @@ const TrabajoList: React.FC<TrabajoListProps> = ({ onEdit }) => {
                     {trabajo.tipoPA}
                   </td>
                   <td className="px-1 py-1 whitespace-nowrap text-[11px] text-gray-900 dark:text-white">
-                    {trabajo.fechaRegistro}
+                    {formatDate(trabajo.fechaRegistro)}
                   </td>
                   <td className="px-1 py-1 whitespace-nowrap text-[11px] text-gray-900 dark:text-white">
-                    {trabajo.fechaEntrega || 'Por definir'}
+                    {formatDate(trabajo.fechaEntrega)}
                   </td>
                   <td className="px-1 py-1 whitespace-nowrap text-[11px] text-gray-900 dark:text-white">
                     S/ {trabajo.precio}

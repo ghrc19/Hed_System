@@ -7,6 +7,7 @@ import { BarChart2, DollarSign, FileText, CheckCircle, Clock, Calendar } from 'l
 import { FaFilePdf } from 'react-icons/fa';
 import useTrabajoStore from '../store/trabajosStore';
 import useCatalogoStore from '../store/catalogoStore';
+import { formatDate } from '../lib/utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -459,7 +460,7 @@ const DashboardPage: React.FC = () => {
                           {trabajo.curso}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {trabajo.fechaRegistro}
+                          {formatDate(trabajo.fechaRegistro)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
